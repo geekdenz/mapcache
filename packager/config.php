@@ -14,8 +14,8 @@ return array(
             'build/root/*' => '/',
         ),
         'license' => 'GPL v3',
-        'repository' => 'repository.test.zen.landcareresearch.co.nz:/var/www/dists/precise/main/binary-amd64',
-        //'repository' => '172.20.89.151:/tmp',
+        //'repository' => 'repository.test.zen.landcareresearch.co.nz:/var/www/dists/precise/main/binary-amd64',
+        'repository' => '172.20.89.151:/tmp',
         'url' => 'http://mapserver.org',
         'vendor' => 'Regents of the University of Minnesota & Landcare Research',
 

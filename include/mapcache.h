@@ -75,6 +75,8 @@
 #define MAPCACHE_TILESET_WRONG_EXTENT 4
 #define MAPCACHE_CACHE_MISS 5
 #define MAPCACHE_FILE_LOCKED 6
+#define MAPCACHE_URL_PARAMS_MAX_LENGTH 4096
+#define BUFFER_SIZE 4096
 
 #define MAPCACHE_USERAGENT "mod-mapcache/"MAPCACHE_VERSION
 
@@ -1759,6 +1761,24 @@ mapcache_timedimension* mapcache_timedimension_sqlite_create(apr_pool_t *pool);
 
 int mapcache_is_axis_inverted(const char *srs);
 
+/**
+ * calling mapserv directly from cmd line through
+ * popen instead of through HTTP
+ */
+typedef struct {
+  // hold the param string, e.g. PARAM1=val1&PARAM2=val2&
+  char *param_string;
+  // keep track of which param we are up to
+  int param_index;
+  // ctx to debug
+  mapcache_context *ctx;
+} mapcache_popen;
+int foreach_params(void *rec, const char *key, const char *value);
+void mapcache_cmd_do_request(mapcache_context *ctx, char *url, mapcache_buffer *data, apr_table_t *headers, long *http_code);
+void mapcache_cmd_do_request_with_params(mapcache_context *ctx, mapcache_http *req, apr_table_t *params,
+    mapcache_buffer *data, apr_table_t *headers, long *http_code);
+FILE *popen_mapserv(const mapcache_context *ctx, const char *param_string);
 #endif /* MAPCACHE_H_ */
 /* vim: ts=2 sts=2 et sw=2
 */
+

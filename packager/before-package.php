@@ -23,8 +23,8 @@ e("Compiling MapCache...");
 x("mkdir build");
 $pwd = trim(`pwd`);
 $prefix = "'$pwd/build'";
-x("cd $prefix && cmake --enable-debug ..");
+x("cd $prefix && cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_VERBOSE_MAKEFILE=ON ..");
 $root = str_replace("'", '', $prefix .'/root');
-x("cd $prefix && mkdir -p $root && make DESTDIR=$root ".
+x("cd $prefix && mkdir -p $root && make ".
 "&& make install DESTDIR=$root");
 x("cp -Rp $root/* $pwd/packager/root");

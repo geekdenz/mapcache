@@ -141,6 +141,7 @@ void mapcache_http_do_request_with_params(mapcache_context *ctx, mapcache_http *
 {
   mapcache_http *request = mapcache_http_clone(ctx,req);
   request->url = mapcache_http_build_url(ctx,req->url,params);
+  ctx->log(ctx, MAPCACHE_DEBUG, "\nhttp.c HELLO\n");
   mapcache_http_do_request(ctx,request,data,headers, http_code);
 }
 

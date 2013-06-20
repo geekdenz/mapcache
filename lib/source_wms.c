@@ -33,6 +33,50 @@
 #include <apr_tables.h>
 #include <apr_strings.h>
 
+void mapcache_cmd_do_request(mapcache_context *ctx, char *url, mapcache_buffer *data, apr_table_t *headers, long *http_code)
+{
+  char *param_string = strstr(url, "?") + 1; // URL params
+  FILE * source = popen_mapserv(ctx, param_string);
+  char buffer[BUFFER_SIZE];
+  int finished = 0;
+  int final = 0;
+  if (source == NULL) {
+    fclose(source);
+    ctx->log(ctx, MAPCACHE_DEBUG, "CMD: failed to open source\n");
+    return;
+  }
+  while (!finished) {
+      size_t size_read = fread(buffer, sizeof(char), BUFFER_SIZE, source);
+      if (size_read < BUFFER_SIZE) {
+          finished = 1;
+      }
+      _mapcache_curl_memory_callback(buffer, sizeof(char), size_read, (void *)data);
+      final += (int) size_read;
+  }
+  ctx->log(ctx, MAPCACHE_DEBUG, "CMD: finished writing to buffer: %d\n", final);
+  
+  pclose(source);
+}
+void mapcache_cmd_do_request_with_params(mapcache_context *ctx, mapcache_http *req, apr_table_t *params,
+    mapcache_buffer *data, apr_table_t *headers, long *http_code)
+{
+  char *url = mapcache_http_build_url(ctx,req->url,params);
+  mapcache_cmd_do_request(ctx,url,data,headers, http_code);
+}
+
+FILE *popen_mapserv(const mapcache_context *ctx, const char *param_string)
+{
+  FILE *source; //, *target;
+  int len = strlen(param_string);
+  char *first_part = "mapserv -nh \"QUERY_STRING=";
+  char *second_part = "\"| tail -n +3";
+  char *cmd = (char*)malloc(sizeof(char) *(strlen(first_part) + strlen(second_part) + len + 1));
+  sprintf(cmd, "%s%s%s", first_part, param_string, second_part);
+  source = popen(cmd, "r");
+  free(cmd);
+  return source;
+}
+
 /**
  * \private \memberof mapcache_source_wms
  * \sa mapcache_source::render_map()
@@ -47,6 +91,10 @@ void _mapcache_source_wms_render_map(mapcache_context *ctx, mapcache_map *map)
   apr_table_setn(params,"HEIGHT",apr_psprintf(ctx->pool,"%d",map->height));
   apr_table_setn(params,"FORMAT","image/png");
   apr_table_setn(params,"SRS",map->grid_link->grid->srs);
+  mapcache_popen *mpop = (mapcache_popen *) malloc(sizeof(mapcache_popen));
+  mpop->param_string = (char *) malloc(sizeof(char) * MAPCACHE_URL_PARAMS_MAX_LENGTH);
+  mpop->ctx = ctx;
+  mpop->param_index = 0;
 
   apr_table_overlap(params,wms->getmap_params,APR_OVERLAP_TABLES_SET);
   if(map->dimensions && !apr_is_empty_table(map->dimensions)) {
@@ -68,7 +116,8 @@ void _mapcache_source_wms_render_map(mapcache_context *ctx, mapcache_map *map)
   }
 
   map->encoded_data = mapcache_buffer_create(30000,ctx->pool);
-  mapcache_http_do_request_with_params(ctx,wms->http,params,map->encoded_data,NULL,NULL);
+  //mapcache_http_do_request_with_params(ctx,wms->http,params,map->encoded_data,NULL,NULL);
+  mapcache_cmd_do_request_with_params(ctx,wms->http,params,map->encoded_data,NULL,NULL);
   GC_CHECK_ERROR(ctx);
 
   if(!mapcache_imageio_is_valid_format(ctx,map->encoded_data)) {
@@ -107,7 +156,9 @@ void _mapcache_source_wms_query(mapcache_context *ctx, mapcache_feature_info *fi
   }
 
   fi->data = mapcache_buffer_create(30000,ctx->pool);
-  mapcache_http_do_request_with_params(ctx,wms->http,params,fi->data,NULL,NULL);
+
+  //mapcache_http_do_request_with_params(ctx,wms->http,params,fi->data,NULL,NULL);
+  mapcache_cmd_do_request_with_params(ctx,wms->http,params,fi->data,NULL,NULL);
   GC_CHECK_ERROR(ctx);
 
 }
